@@ -1,0 +1,32 @@
+﻿<!DOCTYPE html>
+@using Telerik.Web.Mvc.UI
+<html>
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE9" >
+        <title>@ViewBag.Title</title>
+        <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" type="text/css" />
+        <script src="@Url.Content("~/Scripts/jquery-1.6.4.min.js")" type="text/javascript"></script>
+        @(Html.Telerik().StyleSheetRegistrar()
+           .DefaultGroup(group => group
+                                      .Add("telerik.common.css")
+                                      .Add("telerik.Vista.css")))
+    </head>
+
+<body>
+    <div class="page">
+
+        <div id="header">
+            <div id="title">
+                <h1>Telerik MVC Grid Sample</h1>
+            </div>
+        </div>
+
+        <div id="main">
+            @RenderBody()
+            <div id="footer">
+            </div>
+        </div>
+    </div>
+    @(Html.Telerik().ScriptRegistrar().jQuery(false))
+</body>
+</html>

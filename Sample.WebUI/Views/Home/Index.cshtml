@@ -1,0 +1,181 @@
+﻿@using Sample.WebUI.Models
+
+@{
+    ViewBag.Title = "Customer Orders";
+}
+
+<h2>Customer Orders</h2>
+
+@{Html.Telerik().Grid<CustomerViewModel>()
+    .Name("Customers")
+    .DataKeys(keys => keys
+        .Add(c => c.CustomerId)
+        .RouteKey("CustomerId"))
+    .DataBinding(dataBinding => dataBinding.Ajax()
+            .Select("AjaxCustomersHierarchy", "Home")
+            .Insert("AjaxAddCustomer", "Home")
+            .Update("AjaxSaveCustomer", "Home")
+            .Delete("AjaxDeleteCustomer", "Home"))
+    .Columns(columns =>
+    {
+        columns.Command(commands =>
+        {
+            commands.Edit()
+                .ButtonType(GridButtonType.Image);
+            commands.Delete()
+                .ButtonType(GridButtonType.Image);
+        }).Width(80);
+
+        columns.Bound(c => c.LastName)
+            .ClientTemplate("<#=LastName#>, <#=FirstName#>" + "<#=MiddleInitial#>")
+            .Title("Full Name");
+        columns.Bound(c => c.AccountNumber);
+    })
+    .ToolBar(commands => commands.Insert()
+        .ButtonType(GridButtonType.ImageAndText)
+        .ImageHtmlAttributes(new { style = "margin-left:0" }))
+    .ClientEvents(events => events
+        .OnError("onError")
+        .OnDataBound("onDataBoundCustomers")
+        .OnDetailViewExpand("onExpandCustomer")
+        .OnEdit("onEditCustomers"))
+    .Editable(editing => editing.Mode(GridEditMode.PopUp))
+    .Pageable(pagerAction => pagerAction.PageSize(15))
+    .KeyboardNavigation()
+    .Sortable()
+    .Filterable()
+    .HtmlAttributes(new { style = "width:50%;" })
+    .DetailView(details => details
+        .ClientTemplate(Html.Telerik().Grid<OrderViewModel>()
+            .Name("Orders_<#= CustomerId #>")
+            .Columns(columns =>
+            {
+                columns.Command(commands =>
+                {
+                    commands.Edit().ButtonType(GridButtonType.Image);
+                    commands.Delete().ButtonType(GridButtonType.Image);
+                }).Width(80);
+
+                columns.Bound(o => o.DatePlaced)
+                    .Format("{0:MM/dd/yyyy}");
+                columns.Bound(o => o.OrderSubtotal)
+                    .Title("Subtotal")
+                    .Filterable(false);
+                columns.Bound(o => o.OrderTax)
+                    .Title("Tax")
+                    .Filterable(false);
+                columns.Bound(o => o.OrderTotal)
+                    .Title("Total")
+                    .Filterable(false);
+                columns.Bound(o => o.OrderChannelName)
+                    .Title("Channel")
+                    .Filterable(false);
+            })
+            .ToolBar(commands => commands.Insert()
+                .ButtonType(GridButtonType.ImageAndText)
+                .ImageHtmlAttributes(new { style = "margin-left:0" }))
+            .DataBinding(dataBinding => dataBinding.Ajax()
+                .Select("AjaxOrdersForCustomerHierarchy", "Home", new { customerId = "<#= CustomerId #>" })
+                .Insert("AjaxAddOrder", "Home", new { customerId = "<#= CustomerId #>" })
+                .Update("AjaxSaveOrder", "Home", new { customerId = "<#= CustomerId #>" })
+                .Delete("AjaxDeleteOrder", "Home", new { customerId = "<#= CustomerId #>" }))
+            .DataKeys(keys => keys
+                .Add(o => o.OrderId)
+                    .RouteKey("OrderId"))
+            .ClientEvents(events => events
+                .OnError("onError")
+                .OnDataBound("onDataBoundOrders")
+                .OnEdit("onEditOrders"))
+            .Pageable(pagerAction => pagerAction.PageSize(15))
+            .KeyboardNavigation()
+            .Editable(editing => editing.Mode(GridEditMode.PopUp))
+            .Sortable()
+            .Filterable()
+            .ToHtmlString()
+    ))
+    .Render();
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#Customers .t-grid-add")
+            .first()
+            .text("Add new Customer")
+            .prepend("<span class='t-icon t-add'>");
+    });
+
+    function onError(e) {
+        e.preventDefault();
+        alert(e.XMLHttpRequest.getResponseHeader("message"));
+    }
+
+    function onDataBoundCustomers() {
+        replaceDeleteConfirmation(this, "Customer");
+    }
+
+    function onEditCustomers(e) {
+        var popup = $("#" + e.currentTarget.id + "PopUp");
+        var popupDataWin = popup.data("tWindow");
+
+        popup.css({ "left": "700px", "top": "400px" });
+        //popupDataWin.center(); // Use if you'd rather center the dialog instead of explicitly postion it.
+
+        if (e.mode == "insert")
+            popupDataWin.title("Add new Customer");
+        else
+            popupDataWin.title("Edit Customer");
+
+        // Hide fields from the pop-up.
+        $(e.form).find("#CustomerId").closest(".editor-field").prev().andSelf().hide();
+        $(e.form).find("#MiddleInitial").closest(".editor-field").prev().andSelf().hide();
+    }
+
+    function onExpandCustomer() {
+        $(".t-detail-cell").css({
+            "padding-left": "80px",
+            "padding-bottom": "30px"
+        });
+    }
+    
+    function onDataBoundOrders() {
+        $(this).find(".t-grid-add").first().text("Add new Order").prepend("<span class='t-icon t-add'>");
+        replaceDeleteConfirmation(this, "Order");
+    }
+
+    function onEditOrders(e) {
+        var popup = $("#" + e.currentTarget.id + "PopUp");
+        var popupDataWin = popup.data("tWindow");
+
+        popup.css({ "left": "700px", "top": "400px" });
+        //popupDataWin.center(); // Use if you'd rather center the dialog instead of explicitly postion it.
+
+        if (e.mode == "insert")
+            popupDataWin.title("Add new Order");
+        else
+            popupDataWin.title("Edit Order");
+
+        var url = '@Url.Action("GetOrderChannels", "Home")';
+        var orderChannel = $('#OrderChannelId').data('tDropDownList');
+        orderChannel.loader.showBusy();
+
+        $.get(url, function (data) {
+            orderChannel.dataBind(data);
+            orderChannel.loader.hideBusy();
+            orderChannel.select(function (dataItem) {
+                if (e.mode == 'edit') {
+                    return dataItem.Value == e.dataItem['OrderChannelId'];
+                } else {
+                    return dataItem.Value == 1; // Default to Phone.
+                }
+            });
+        });
+    }
+
+    function replaceDeleteConfirmation(item, itemType) {
+        var grid = $(item).data('tGrid');
+
+        $(item).find('.t-grid-delete').click(function () {
+            grid.localization.deleteConfirmation = "Are you sure you want to delete this " + itemType + "?";
+        });
+    }
+</script>
